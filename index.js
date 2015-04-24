@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var httpProxy = require('http-proxy'),
 	execSync = require('child_process').execSync,
 	format = require("util").format,
