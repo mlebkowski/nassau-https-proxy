@@ -18,8 +18,10 @@
   "license": "MIT",
   "keywords": ["local", "development", "https", "ssl", "cert", "proxy"],
   "dependencies": {
-    "http-proxy": "*",
-    "exec-sync": "*"
+    "http-proxy": "*"
+  },
+  "engines" : {
+    "node" : ">=0.10.3"
   },
   "scripts": {
     "start": "node index.js"

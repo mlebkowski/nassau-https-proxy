@@ -1,9 +1,9 @@
 var httpProxy = require('http-proxy'),
-	execSync = require('exec-sync'),
+	execSync = require('child_process').execSync,
 	sprintf = require("util").format,
 	fs = require('fs'),
 	path = require('path'),
-	crypto = require('crypto'),
+	tls = require('tls'),
 	https = require('https'),
 	sys = require('sys');
 	
@@ -18,42 +18,46 @@ function generateCertificate(name, CA) {
 		keyPath = path.resolve(certPath, name + ".key"),
 		csrPath = path.resolve(certPath, name + ".csr"),
 		resultPath = path.resolve(certPath, name + ".crt");
-		
+
 	fs.existsSync(certPath) || fs.mkdirSync(certPath);
 	
-	if (false === fs.existsSync(passKeyPath)) try {
-		console.log("Generating: " + passKeyPath);
-		execSync(sprintf('openssl genrsa -des3 -passout pass:nassauproxy -out "%s" 2048', passKeyPath));
-	} catch (E) {}
+	function execSilent(command) {
+		execSync(command, { stdio: [0, null, null] });
+	}
 	
-	if (false === fs.existsSync(keyPath)) try {
+	if (false === fs.existsSync(passKeyPath)) {
+		console.log("Generating: " + passKeyPath);
+		execSilent(sprintf('openssl genrsa -des3 -passout pass:nassauproxy -out "%s" 2048', passKeyPath));
+	}
+
+	if (false === fs.existsSync(keyPath)) {
 		console.log("Generating: " + keyPath);
-		execSync(sprintf('openssl rsa -passin pass:nassauproxy -in "%s" -out "%s"', passKeyPath, keyPath));
-	} catch (E) {}
+		execSilent(sprintf('openssl rsa -passin pass:nassauproxy -in "%s" -out "%s"', passKeyPath, keyPath));
+	}
 		
-	if (false === fs.existsSync(csrPath)) try {
+	if (false === fs.existsSync(csrPath)) {
 		console.log('Generating: ' + csrPath);
-		execSync(sprintf("bash -c 'echo -e \"PL\\nmazowieckie\\nWarszawa\\nNassau SC\\n\\n"+name+"\\n\\n\\n\\n\\n\" | openssl req -new -key \"%s\" -out \"%s\"'",
-			keyPath, csrPath
-		));		
-	} catch (E) {}
+		execSync(sprintf('openssl req -new -key "%s" -out "%s"', keyPath, csrPath), {
+			"stdio": [null, null, null],
+			"input": ["PL", "mazowieckie", "Warsaw", "Nassau SC", "", name, "", "", "", ""].join("\n")
+		});
+	} 
 		
-	if (false === fs.existsSync(resultPath)) try {
+	if (false === fs.existsSync(resultPath)) {
 		if (CA) {
 			console.log("Signing the certificate using your own CA: " + resultPath);
-			execSync(sprintf('openssl x509 -req -days 365 -in "%s" -CA "%s" -CAkey "%s" -CAcreateserial -out "%s"',
+			execSilent(sprintf('openssl x509 -req -days 365 -in "%s" -CA "%s" -CAkey "%s" -CAcreateserial -out "%s"',
 				csrPath, CA.cert, CA.key, resultPath
 			));
 
 		} else {
 			console.log("Add this cert as a trusted root to get rid of SSL warnings: " + resultPath);
 
-			execSync(sprintf('openssl x509 -req -days 365 -in "%s" -out "%s" -signkey "%s"',
+			execSilent(sprintf('openssl x509 -req -days 365 -in "%s" -out "%s" -signkey "%s"',
 				csrPath, resultPath, keyPath
 			));
-
 		}
-	} catch (E) {}
+	}
 	
 	return {
 		"cert": resultPath,
@@ -65,19 +69,20 @@ function generateCertificate(name, CA) {
 var CA = generateCertificate('ssl.proxy.nassau');
 
 var ssl = {
-	SNICallback: function (domain) {
-		var domainCert = generateCertificate(domain, CA);
+	SNICallback: function (domain, callback) {
+		var domainCert = generateCertificate(domain, CA),
+			ctx = tls.createSecureContext({
+				key:  fs.readFileSync(domainCert.key),
+				cert: fs.readFileSync(domainCert.cert),
+				ca:   [fs.readFileSync(CA.cert)],
+				ciphers: "AES128+EECDH:AES128+EDH"
+			});
 		
-		return crypto.createCredentials({
-			key:  fs.readFileSync(domainCert.key),
-			cert: fs.readFileSync(domainCert.cert),
-			ca: [fs.readFileSync(CA.cert)]
-		}).context;
+		return callback(null, ctx);
 	},
-	key: fs.readFileSync(CA.key, 'utf8'),
-	cert: fs.readFileSync(CA.cert, 'utf8'),
-	requestCert: true,
-	rejectUnauthorized: false
+	
+	key: fs.readFileSync(CA.key),
+	cert: fs.readFileSync(CA.cert)
 };
 
 var proxy = httpProxy.createProxyServer({ target: { host: forwardHost, port: forwardPort } });
@@ -86,7 +91,9 @@ proxy.on('proxyReq', function(proxyReq, req, res, options) {
   proxyReq.setHeader('X-Forwarded-Protocol', 'https');
   proxyReq.setHeader('X-Forwarded-Proto', 'https');
 });
+
 https.createServer(ssl, function(req, res) {
+	console.log(req.method + " https://" + req.headers.host + req.url);
 	proxy.web(req, res);
 }).listen(listenPort);
 
