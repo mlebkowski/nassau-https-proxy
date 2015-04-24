@@ -1,6 +1,6 @@
 var httpProxy = require('http-proxy'),
 	execSync = require('child_process').execSync,
-	sprintf = require("util").format,
+	format = require("util").format,
 	fs = require('fs'),
 	path = require('path'),
 	tls = require('tls'),
@@ -8,59 +8,46 @@ var httpProxy = require('http-proxy'),
 	sys = require('sys');
 	
 
-var certPath = path.resolve(process.env.HOME, '.nassau-proxy'),
+var homePath = path.resolve(process.env.HOME, '.nassau-proxy'),
 	listenPort = process.env.PORT || 443,
 	forwardHost = process.env.FORWARD_HOST || 'localhost',
 	forwardPort = process.env.FORWARD_PORT || 80;
 
 function generateCertificate(name, CA) {
-	var passKeyPath = path.resolve(certPath, name + ".pass.key"),
-		keyPath = path.resolve(certPath, name + ".key"),
-		csrPath = path.resolve(certPath, name + ".csr"),
-		resultPath = path.resolve(certPath, name + ".crt");
+	var keyPath = path.resolve(homePath, name + ".key"),
+		csrPath = path.resolve(homePath, name + ".csr"),
+		certPath = path.resolve(homePath, name + ".crt"),
+		subject = "/C=PL/ST=mazowieckie/L=Warsaw/O=Nassau SC/CN=" + name,
+		command = format(
+			'openssl req -newkey rsa:2048 -sha256 -nodes -keyout "%s" -out "%s" -subj "%s"',
+			keyPath, csrPath, subject
+		);
 
-	fs.existsSync(certPath) || fs.mkdirSync(certPath);
+	fs.existsSync(homePath) || fs.mkdirSync(homePath);
 	
-	function execSilent(command) {
-		execSync(command, { stdio: [0, null, null] });
-	}
-	
-	if (false === fs.existsSync(passKeyPath)) {
-		console.log("Generating: " + passKeyPath);
-		execSilent(sprintf('openssl genrsa -des3 -passout pass:nassauproxy -out "%s" 2048', passKeyPath));
-	}
-
-	if (false === fs.existsSync(keyPath)) {
-		console.log("Generating: " + keyPath);
-		execSilent(sprintf('openssl rsa -passin pass:nassauproxy -in "%s" -out "%s"', passKeyPath, keyPath));
-	}
+	if (false === fs.existsSync(certPath)) {
 		
-	if (false === fs.existsSync(csrPath)) {
-		console.log('Generating: ' + csrPath);
-		execSync(sprintf('openssl req -new -key "%s" -out "%s"', keyPath, csrPath), {
-			"stdio": [null, null, null],
-			"input": ["PL", "mazowieckie", "Warsaw", "Nassau SC", "", name, "", "", "", ""].join("\n")
-		});
-	} 
-		
-	if (false === fs.existsSync(resultPath)) {
 		if (CA) {
-			console.log("Signing the certificate using your own CA: " + resultPath);
-			execSilent(sprintf('openssl x509 -req -days 365 -in "%s" -CA "%s" -CAkey "%s" -CAcreateserial -out "%s"',
-				csrPath, CA.cert, CA.key, resultPath
-			));
-
+			console.log("Generating certificate: " + certPath);
+			
+			// signing key and request:
+			execSync(command, { stdio: [0, null, null] });
+			
+			command = format(
+				'openssl x509 -req -days 1001 -sha256 -in "%s" -out "%s" -CA "%s" -CAkey "%s" -CAcreateserial',
+				csrPath, certPath, CA.cert, CA.key
+			);
 		} else {
-			console.log("Add this cert as a trusted root to get rid of SSL warnings: " + resultPath);
-
-			execSilent(sprintf('openssl x509 -req -days 365 -in "%s" -out "%s" -signkey "%s"',
-				csrPath, resultPath, keyPath
-			));
+			console.log("Add this cert as a trusted CA Root to get rid of SSL warnings: " + certPath);
+			
+			command = (command + " -x509 -days 1001").replace(csrPath, certPath);
 		}
+
+		execSync(command, { stdio: [0, null, null] });		
 	}
 	
 	return {
-		"cert": resultPath,
+		"cert": certPath,
 		"key": keyPath
 	}
 }
@@ -97,4 +84,4 @@ https.createServer(ssl, function(req, res) {
 	proxy.web(req, res);
 }).listen(listenPort);
 
-console.log(sprintf("Listening on %s. Forwarding to http://%s:%d", listenPort, forwardHost, forwardPort));
+console.log("Listening on %s. Forwarding to http://%s:%d", listenPort, forwardHost, forwardPort);
