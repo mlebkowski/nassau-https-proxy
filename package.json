@@ -1,7 +1,27 @@
 {
-  "private": true,
+  "name": "nassau-https-proxy",
+  "description": "enable HTTPS in your local development environment with automatically generated certificates",
+  "author": {
+    "name": "Maciej Łebkowski",
+    "email": "m.lebkowski@gmail.com",
+    "url": "https://lebkowski.name"
+  },
+  "bin": {
+    "nassau-https-proxy": "./index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mlebkowski/nassau-https-proxy.git"
+  },
+  "version": "0.1.0",
+  "homepage": "https://github.com/mlebkowski/nassau-https-proxy",
+  "license": "MIT",
+  "keywords": ["local", "development", "https", "ssl", "cert", "proxy"],
   "dependencies": {
     "http-proxy": "*",
     "exec-sync": "*"
+  },
+  "scripts": {
+    "start": "node index.js"
   }
 }
