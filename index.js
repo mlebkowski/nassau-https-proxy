@@ -9,7 +9,9 @@ var httpProxy = require('http-proxy'),
 	
 
 var certPath = path.resolve(process.env.HOME, '.nassau-proxy'),
-	listenPort = process.env.PORT || 443;
+	listenPort = process.env.PORT || 443,
+	forwardHost = process.env.FORWARD_HOST || 'localhost',
+	forwardPort = process.env.FORWARD_PORT || 80;
 
 function generateCertificate(name, CA) {
 	var passKeyPath = path.resolve(certPath, name + ".pass.key"),
@@ -78,7 +80,7 @@ var ssl = {
 	rejectUnauthorized: false
 };
 
-var proxy = httpProxy.createProxyServer({ target: { host: "localhost", port: 80 } });
+var proxy = httpProxy.createProxyServer({ target: { host: forwardHost, port: forwardPort } });
 
 proxy.on('proxyReq', function(proxyReq, req, res, options) {
   proxyReq.setHeader('X-Forwarded-Protocol', 'https');
@@ -88,4 +90,4 @@ https.createServer(ssl, function(req, res) {
 	proxy.web(req, res);
 }).listen(listenPort);
 
-console.log("Listening on " + listenPort);
+console.log(sprintf("Listening on %s. Forwarding to http://%s:%d", listenPort, forwardHost, forwardPort));

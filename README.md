@@ -1,5 +1,5 @@
-Simple HTTPS for development
-============================
+Simple HTTPS server for development
+===================================
 
 This is a simple SSL-stripping proxy for local development. You don’t need to configure your apache or nginx or vagrant or whatever to use SSL. Just complete a simple setup and all of your local projects will be available over HTTPS without browser warnings.
 
@@ -21,7 +21,7 @@ For convinience, proxy listens on the default HTTPS port (443) so it needs to be
 
 ```
 $ sudo node index.js
-Listening on 443
+Listening on 443. Forwarding to http://localhost:80
 Generating: /home/bob/.nassau-proxy/ssl.proxy.nassau.pass.key
 Generating: /home/bob/.nassau-proxy/ssl.proxy.nassau.key
 Generating: /home/bob/.nassau-proxy/ssl.proxy.nassau.csr
@@ -43,6 +43,14 @@ If you need to run it on a different port, use `PORT` env:
 env PORT=8443 node index.js
 ```
 
+Forwarding address
+===================
+
+By default it forwards to your local apache/nginx instance. You can change this behaviour using env variables:
+
+```
+env FORWARD_PORT=8080 FORWARD_HOST=vagrant-for-example node index.js
+```
 
 Enjoy
 =====
