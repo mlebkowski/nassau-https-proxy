@@ -10,6 +10,11 @@ var httpProxy = require('http-proxy'),
 	sys = require('sys');
 	
 
+if (!execSync) {
+	console.log("execSync() is missing. Are you running node v0.12?");
+	process.exit(1);
+}
+
 var homePath = path.resolve(process.env.HOME, '.nassau-proxy'),
 	listenPort = process.env.PORT || 443,
 	forwardHost = process.env.FORWARD_HOST || 'localhost',
@@ -56,6 +61,13 @@ function generateCertificate(name, CA) {
 
 // force the CA
 var CA = generateCertificate('ssl.proxy.nassau');
+
+if (process.env.POSTINSTALL) {
+	console.log(format("Adding %s as a trusted certificate to system keychain. \n"
+		+"Please provide your root password when asked or skip this step:", CA.cert));
+	execSync(format('sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "%s"', CA.cert));
+	process.exit();
+}
 
 var ssl = {
 	SNICallback: function (domain, callback) {

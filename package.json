@@ -13,7 +13,7 @@
     "type": "git",
     "url": "https://github.com/mlebkowski/nassau-https-proxy.git"
   },
-  "version": "0.1.3",
+  "version": "0.1.4",
   "homepage": "https://github.com/mlebkowski/nassau-https-proxy",
   "license": "MIT",
   "keywords": ["local", "development", "https", "ssl", "cert", "proxy"],
@@ -24,6 +24,7 @@
     "node" : ">=0.10.3"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "install": "ENV POSTINSTALL=1 node index.js"
   }
 }

@@ -23,7 +23,14 @@ Listening on 443. Forwarding to http://localhost:80
 Add this cert as a trusted root to get rid of SSL warnings: /home/bob/.nassau-proxy/ssl.proxy.nassau.crt
 ```
 
-Do as instructed, open the cert in your KeyChain:
+The cert will be added to your system keychain during install, but if something goes wrong, you may always do this manually:
+
+```
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ~/.nassau-proxy/ssl.proxy.nassau.crt
+```
+
+Or:
+
 ```
 open ~/.nassau-proxy/ssl.proxy.nassau.crt
 ```
