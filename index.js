@@ -63,14 +63,11 @@ function generateCertificate(name, CA) {
 var CA = generateCertificate('ssl.proxy.nassau');
 
 if (process.env.POSTINSTALL) {
-	if ("darwin" !== process.platform) {
-		console.log(format("Please add this certificate as a trusted root: %s", CA.cert));
-		process.exit();
+	if ("darwin" === process.platform) {
+		console.log(format("Adding %s as a trusted certificate to system keychain. \n"
+			+"Please provide your root password when asked or skip this step:", CA.cert));
+		execSync(format('sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "%s"', CA.cert));
 	}
-
-	console.log(format("Adding %s as a trusted certificate to system keychain. \n"
-		+"Please provide your root password when asked or skip this step:", CA.cert));
-	execSync(format('sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "%s"', CA.cert));
 	process.exit();
 }
 
