@@ -15,7 +15,7 @@ You need to have `openssl` available on your system, since it’s used to genera
 Run proxy
 =========
 
-For convinience, proxy listens on the default HTTPS port (443) so it needs to be ran as root:
+For convenience, proxy listens on the default HTTPS port (443) so it needs to be ran as root:
 
 ```
 $ sudo nassau-https-proxy
