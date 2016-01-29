@@ -90,6 +90,14 @@ var ssl = {
 
 var proxy = httpProxy.createProxyServer({ target: { host: forwardHost, port: forwardPort } });
 
+proxy.on('error', function (err, req, res) {
+  res.writeHead(500, {
+    'Content-Type': 'text/plain'
+  });
+ 
+  res.end('Something went wrong.');
+});
+
 proxy.on('proxyReq', function(proxyReq, req, res, options) {
   proxyReq.setHeader('X-Forwarded-Protocol', 'https');
   proxyReq.setHeader('X-Forwarded-Proto', 'https');
