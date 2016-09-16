@@ -13,15 +13,23 @@
     "type": "git",
     "url": "https://github.com/mlebkowski/nassau-https-proxy.git"
   },
-  "version": "0.1.8",
+  "version": "0.1.9",
   "homepage": "https://github.com/mlebkowski/nassau-https-proxy",
   "license": "MIT",
-  "keywords": ["local", "development", "https", "ssl", "cert", "proxy", "reverse-proxy"],
+  "keywords": [
+    "local",
+    "development",
+    "https",
+    "ssl",
+    "cert",
+    "proxy",
+    "reverse-proxy"
+  ],
   "dependencies": {
     "http-proxy": "*"
   },
-  "engines" : {
-    "node" : ">=0.10.3"
+  "engines": {
+    "node": ">=0.10.3"
   },
   "scripts": {
     "start": "node index.js",
