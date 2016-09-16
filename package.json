@@ -16,7 +16,7 @@
   "version": "0.1.8",
   "homepage": "https://github.com/mlebkowski/nassau-https-proxy",
   "license": "MIT",
-  "keywords": ["local", "development", "https", "ssl", "cert", "proxy"],
+  "keywords": ["local", "development", "https", "ssl", "cert", "proxy", "reverse-proxy"],
   "dependencies": {
     "http-proxy": "*"
   },
