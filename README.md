@@ -1,7 +1,7 @@
 Simple HTTPS server for development
 ===================================
 
-This is a simple SSL-stripping proxy for local development. You don’t need to configure your apache or nginx or vagrant or whatever to use SSL. Just complete a simple setup and all of your local projects will be available over HTTPS without browser warnings.
+This is a simple SSL-stripping reverse proxy for local development. You don’t need to configure your apache or nginx or vagrant or whatever to use SSL. Just complete a simple setup and all of your local projects will be available over HTTPS without browser warnings.
 
 Requirements & Setup
 ====================
