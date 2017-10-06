@@ -127,6 +127,8 @@ proxy.on('proxyReq', function (proxyReq, req, res, options) {
 https.createServer(ssl, function (req, res) {
     console.log(req.method + " https://" + req.headers.host + req.url);
     proxy.web(req, res);
+}).on('upgrade', function (req, socket, head) {
+    proxy.ws(req, socket, head);
 }).listen(listenPort);
 
 console.log("Listening on %s. Forwarding to http://%s:%d", listenPort, forwardHost, forwardPort);
