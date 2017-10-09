@@ -112,7 +112,7 @@ var ssl = {
 var proxy = httpProxy.createProxyServer({target: {host: forwardHost, port: forwardPort}});
 
 proxy.on('error', function (err, req, res) {
-    res.writeHead(500, {
+    res.writeHead && res.writeHead(500, {
         'Content-Type': 'text/plain'
     });
 
