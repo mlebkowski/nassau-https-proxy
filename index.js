@@ -122,6 +122,7 @@ proxy.on('error', function (err, req, res) {
 proxy.on('proxyReq', function (proxyReq, req, res, options) {
     proxyReq.setHeader('X-Forwarded-Protocol', 'https');
     proxyReq.setHeader('X-Forwarded-Proto', 'https');
+    proxyReq.setHeader('X-Forwarded-Port', listenPort);
 });
 
 https.createServer(ssl, function (req, res) {
