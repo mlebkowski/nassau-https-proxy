@@ -1,57 +1,50 @@
 #!/usr/bin/env node
 
-var httpProxy = require('http-proxy'),
-    execSync = require('child_process').execSync,
-    format = require("util").format,
-    fs = require('fs'),
-    path = require('path'),
-    tls = require('tls'),
-    https = require('https'),
-    sys = require('sys');
-
-var version = require('./package.json').version.split('.')[0];
+const httpProxy = require('http-proxy');
+const execSync = require('child_process').execSync;
+const format = require("util").format;
+const fs = require('fs');
+const path = require('path');
+const tls = require('tls');
+const https = require('https');
 
 if (!execSync) {
     console.log("execSync() is missing. Are you running node v0.12?");
     process.exit(1);
 }
 
-var homePath = path.resolve(process.env.HOME, '.nassau-proxy/v' + version),
-    configPath = path.resolve(homePath, 'openssl.conf'),
-    listenPort = process.env.PORT || 443,
-    forwardHost = process.env.FORWARD_HOST || 'localhost',
-    forwardPort = process.env.FORWARD_PORT || 80;
+const listenPort = process.env.PORT || 443;
+const forwardHost = process.env.FORWARD_HOST || 'localhost';
+const forwardPort = process.env.FORWARD_PORT || 80;
+const caName = process.env.CA_NAME || 'ssl.proxy.nassau.narzekasz.pl';
 
-function generateCertificate(name, CA) {
-    var keyPath = path.resolve(homePath, name + ".key"),
-        csrPath = path.resolve(homePath, name + ".csr"),
-        certPath = path.resolve(homePath, name + ".crt"),
-        execOptions = {stdio: [0, null, null], env: {"ALTNAME": "DNS:" + name}},
-        command = format(
-            'openssl req -newkey rsa:2048 -sha256 -nodes -keyout "%s" -out "%s" -subj "/CN=%s" -config "%s" ',
-            keyPath, csrPath, name, configPath
-        );
+const version = require('./package.json').version.split('.')[0];
+const dataPath = process.env.DATA_PATH || path.resolve(process.env.HOME, '.nassau-proxy/v' + version);
+
+const environment = {
+    DATA_PATH: dataPath,
+    CERT_PATH: format("%s/%s.crt", dataPath, "%s"),
+    KEY_PATH: format("%s/%s.key", dataPath, "%s"),
+    OPENSSL_CONFIG: path.resolve(__dirname, 'openssl.conf')
+}
+
+function generateKeyPath(domain) {
+    return format(environment.KEY_PATH, domain);
+}
+
+function generateCertPath(domain) {
+    return format(environment.CERT_PATH, domain);
+}
+
+function generateCertificate(name) {
+    const certPath = generateCertPath(name);
+    const keyPath = generateKeyPath(name);
 
     if (false === fs.existsSync(certPath)) {
-
-        if (CA) {
-            console.log("Generating certificate: " + certPath);
-
-            // signing key and request:
-            execSync(command, execOptions);
-
-            command = format(
-                'openssl x509 -req -days 1001 -sha256 -in "%s" -out "%s" -CA "%s" -CAkey "%s" -CAcreateserial -extfile "%s"',
-                csrPath, certPath, CA.cert, CA.key, configPath
-            );
-        } else {
-            console.log("Add this cert as a trusted CA Root to get rid of SSL warnings: " + certPath);
-
-            command = (command + " -x509 -days 1001").replace(csrPath, certPath);
-        }
-
-        execSync(command, execOptions);
+      console.log("Generating certificate: " + certPath);
     }
+
+    execSync(format('%s/make-cert "%s" "%s"', __dirname, caName, name), {stdio: [0, null, null], env: environment});
 
     return {
         "cert": certPath,
@@ -59,57 +52,43 @@ function generateCertificate(name, CA) {
     }
 }
 
-fs.existsSync(homePath) || fs.mkdirSync(homePath);
+const caCert = generateCertPath(caName);
+const caKey = generateKeyPath(caName);
 
-if (false === fs.existsSync(configPath)) {
-    fs.writeFileSync(configPath, [
-        'extensions = v3_req',
+if (false === fs.existsSync(caCert)) {
+  console.log("Add this cert as a trusted CA Root to get rid of SSL warnings: " + caCert);
 
-        '[req]',
-        'req_extensions = v3_req',
-        'distinguished_name = req_distinguished_name',
-
-        '[v3_req]',
-        'subjectAltName=$ENV::ALTNAME',
-
-        '[req_distinguished_name]',
-        'C = PL',
-        'ST = mazowieckie',
-        'L = Warsaw',
-        'O  = Nassau SC'
-    ].join("\n"));
+  // force the CA
+  execSync(format('%s/make-cert "%s"', __dirname, caName), {stdio: [0, null, null], env: environment});
 }
-
-// force the CA
-var CA = generateCertificate('ssl.proxy.nassau.narzekasz.pl');
 
 if (process.env.POSTINSTALL) {
     if ("darwin" === process.platform) {
         console.log(format("Adding %s as a trusted certificate to system keychain. \n"
-            + "Please provide your root password when asked or skip this step:", CA.cert));
-        execSync(format('sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "%s"', CA.cert));
+            + "Please provide your root password when asked or skip this step:", caCert));
+        execSync(format('sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "%s"', caCert));
     }
     process.exit();
 }
 
-var ssl = {
+const ssl = {
     SNICallback: function (domain, callback) {
-        var domainCert = generateCertificate(domain, CA),
+        const domainCert = generateCertificate(domain),
             ctx = tls.createSecureContext({
                 key: fs.readFileSync(domainCert.key),
                 cert: fs.readFileSync(domainCert.cert),
-                ca: [fs.readFileSync(CA.cert)],
+                ca: [fs.readFileSync(caCert)],
                 ciphers: "AES128+EECDH:AES128+EDH"
             });
 
         return callback(null, ctx);
     },
 
-    key: fs.readFileSync(CA.key),
-    cert: fs.readFileSync(CA.cert)
+    key: fs.readFileSync(caKey),
+    cert: fs.readFileSync(caCert)
 };
 
-var proxy = httpProxy.createProxyServer({target: {host: forwardHost, port: forwardPort}});
+const proxy = httpProxy.createProxyServer({target: {host: forwardHost, port: forwardPort}});
 
 proxy.on('error', function (err, req, res) {
     res.writeHead && res.writeHead(500, {

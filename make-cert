@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+
+export DATA_PATH=${DATA_PATH:-}
+export CERT_PATH=${CERT_PATH:-"${DATA_PATH}/%s.crt"}
+export KEY_PATH=${KEY_PATH:-"${DATA_PATH}/%s.key"}
+export OPENSSL_CONFIG=${OPENSSL_CONFIG:-./openssl.conf}
+
+if [[ -z "$DATA_PATH" ]]; then
+    echo "DATA_PATH is required" >&2
+    exit 1;
+fi
+
+export START_DATE=$(date +"%y%m%d000000Z")
+export SERIAL_PATH="$DATA_PATH/serial"
+export DATABASE_PATH="$DATA_PATH/database"
+
+init() {
+    mkdir -p "$DATA_PATH" "$(dirname "$CERT_PATH")" "$(dirname "$KEY_PATH")"
+
+    if [[ ! -f "$SERIAL_PATH" ]]; then
+        echo "0001" > "$SERIAL_PATH"
+    fi
+
+    if [[ ! -f "$DATABASE_PATH" ]]; then
+        > "$DATABASE_PATH"
+    fi
+}
+
+make_ca() {
+
+    local ca="$1" cert="$2" key="$3"
+
+    if [[ -f "$cert" ]] && [[ -f "$key" ]]; then
+        return;
+    fi
+
+    openssl req -new -x509 -nodes -config "$OPENSSL_CONFIG" \
+                -keyout "$key" \
+                -out "temp_cert.crt" \
+                -subj "/CN=$ca" \
+                -extensions "standard_ca"
+
+    openssl req -new -nodes -config "$OPENSSL_CONFIG" \
+                -key "$key" \
+                -out "temp_csr.csr" \
+                -subj "/CN=$ca" \
+                -extensions "standard_ca"
+
+    openssl ca -config "$OPENSSL_CONFIG" \
+               -batch \
+               -cert "temp_cert.crt" \
+               -out "$cert" \
+               -in "temp_csr.csr" \
+               -extensions "standard_ca"
+
+    rm temp_* *.pem
+}
+
+make_cert() {
+    local ca="$1"
+    local domain="$2"
+
+    local key_path="$(printf "$KEY_PATH" "$domain")" req_path="${domain}.csr" cert_path="$(printf "$CERT_PATH" "$domain")"
+
+    if [[ -f "$key_path" ]] && [[ -f "$cert_path" ]]; then
+        return;
+    fi
+
+    export SUBJECT_ALT_NAME="DNS:${domain}"
+
+    openssl req -new -config "$OPENSSL_CONFIG" \
+            -keyout "$key_path" \
+            -out "$req_path" \
+            -subj "/CN=$domain" \
+            -nodes \
+            -extensions "standard"
+
+    openssl ca -config "$OPENSSL_CONFIG" \
+               -batch \
+               -noemailDN \
+               -in "$req_path" \
+               -out "$cert_path" \
+               -extensions "standard"
+
+    rm "$req_path"
+}
+
+main() {
+    local ca="$1"
+
+    if [[ -z "$ca" ]]; then
+        echo "You need to specify the CA name as the first parameter" >&2
+        return 2;
+    fi
+
+    init
+
+    export CA_KEY="$(printf "$KEY_PATH" "$ca")"
+    export CA_CERT="$(printf "$CERT_PATH" "$ca")"
+    export SUBJECT_ALT_NAME="DNS:$ca"
+
+    make_ca "$ca" "$CA_CERT" "$CA_KEY"
+
+    for name in "${@:2}"; do
+        make_cert "$ca" "$name"
+    done
+
+}
+
+main "$@"
