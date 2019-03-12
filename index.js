@@ -17,6 +17,7 @@ const listenPort = process.env.PORT || 443;
 const forwardHost = process.env.FORWARD_HOST || 'localhost';
 const forwardPort = process.env.FORWARD_PORT || 80;
 const caName = process.env.CA_NAME || 'ssl.proxy.nassau.narzekasz.pl';
+const proxyTimeout = process.env.PROXY_TIMEOUT || 5*60;
 
 const version = require('./package.json').version.split('.')[0];
 const dataPath = process.env.DATA_PATH || path.resolve(process.env.HOME, '.nassau-proxy/v' + version);
@@ -88,7 +89,13 @@ const ssl = {
     cert: fs.readFileSync(caCert)
 };
 
-const proxy = httpProxy.createProxyServer({target: {host: forwardHost, port: forwardPort}});
+const proxy = httpProxy.createProxyServer({
+    target: {
+        host: forwardHost,
+        port: forwardPort
+    },
+    proxyTimeout: proxyTimeout*1000
+});
 
 proxy.on('error', function (err, req, res) {
     res.writeHead && res.writeHead(500, {
