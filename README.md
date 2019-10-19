@@ -54,6 +54,15 @@ By default it forwards to your local apache/nginx instance. You can change this 
 env FORWARD_PORT=8080 FORWARD_HOST=vagrant-for-example nassau-https-proxy
 ```
 
+Proxy Timeout
+==============
+
+By default, it waits five minutes for a response from the proxied server. You can adjust the timeout using `PROXY_TIMEOUT`. For example, if you want to adjust the timeout to 10 minutes:
+
+```
+env PROXY_TIMEOUT=600 nassau-https-proxy
+```
+
 Enjoy
 =====
 
