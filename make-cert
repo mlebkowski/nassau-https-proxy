@@ -10,7 +10,7 @@ if [[ -z "$DATA_PATH" ]]; then
     exit 1;
 fi
 
-export START_DATE=$(date +"%y%m%d000000Z")
+export START_DATE=$(TZ=UTC date +"%y%m%d000000Z")
 export SERIAL_PATH="$DATA_PATH/serial"
 export DATABASE_PATH="$DATA_PATH/database"
 
