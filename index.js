@@ -65,9 +65,13 @@ if (false === fs.existsSync(caCert)) {
 
 if (process.env.POSTINSTALL) {
     if ("darwin" === process.platform) {
-        console.log(format("Adding %s as a trusted certificate to system keychain. \n"
-            + "Please provide your root password when asked or skip this step:", caCert));
-        execSync(format('sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "%s"', caCert));
+        console.log(format("Adding %s as a trusted certificate to system keychain", caCert));
+        const loginKeychain = String(execSync('security login-keychain'));
+        execSync(format(
+            'security add-trusted-cert -k "%s" "%s"',
+            loginKeychain.replace(/^\s*"|"\s*$/g, ''),
+            caCert
+        ));
     }
     process.exit();
 }

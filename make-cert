@@ -14,6 +14,22 @@ export START_DATE=$(TZ=UTC date +"%y%m%d000000Z")
 export SERIAL_PATH="$DATA_PATH/serial"
 export DATABASE_PATH="$DATA_PATH/database"
 
+create_openssl_config() {
+    declare target=$1
+
+    local source="${target%.conf}.tmpl"
+
+    sed \
+        -e s,\$ENV::SERIAL_PATH,"$SERIAL_PATH",g \
+        -e s,\$ENV::DATABASE_PATH,"$DATABASE_PATH",g \
+        -e s,\$ENV::CA_KEY,"$CA_KEY",g \
+        -e s,\$ENV::CA_CERT,"$CA_CERT",g \
+        -e s,\$ENV::START_DATE,"$START_DATE",g \
+        -e s,\$ENV::SUBJECT_ALT_NAME,"$SUBJECT_ALT_NAME",g \
+        "$source" > "$target"
+        
+}
+
 init() {
     mkdir -p "$DATA_PATH" "$(dirname "$CERT_PATH")" "$(dirname "$KEY_PATH")"
 
@@ -34,6 +50,8 @@ make_ca() {
         return;
     fi
 
+    create_openssl_config "$OPENSSL_CONFIG"
+
     openssl req -new -x509 -nodes -config "$OPENSSL_CONFIG" \
                 -keyout "$key" \
                 -out "temp_cert.crt" \
@@ -53,7 +71,7 @@ make_ca() {
                -in "temp_csr.csr" \
                -extensions "standard_ca"
 
-    rm temp_* *.pem
+    rm temp_* *.pem "$OPENSSL_CONFIG"
 }
 
 make_cert() {
@@ -67,6 +85,8 @@ make_cert() {
     fi
 
     export SUBJECT_ALT_NAME="DNS:${domain}"
+
+    create_openssl_config "$OPENSSL_CONFIG"
 
     openssl req -new -config "$OPENSSL_CONFIG" \
             -keyout "$key_path" \
@@ -82,7 +102,7 @@ make_cert() {
                -out "$cert_path" \
                -extensions "standard"
 
-    rm "$req_path"
+    rm "$req_path" "$OPENSSL_CONFIG"
 }
 
 main() {
