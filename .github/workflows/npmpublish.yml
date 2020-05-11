@@ -14,7 +14,15 @@ jobs:
         with:
           node-version: 8
           registry-url: https://registry.npmjs.org/
-      - run: npm publish
+      - run: |
+          package_name=$(node -p -e "require('./package.json').name")
+          published_version=$(npm view "$package_name" version)
+          current_version=$(node -p -e "require('./package.json').version")
+          if [[ $current_version == "$published_version" ]]; then
+             echo "Version $current_version is already published"
+             exit 0
+          fi
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
 
@@ -26,6 +34,14 @@ jobs:
         with:
           node-version: 8
           registry-url: https://npm.pkg.github.com/
-      - run: npm publish
+      - run: |
+          package_name=$(node -p -e "require('./package.json').name")
+          published_version=$(npm view "$package_name" version)
+          current_version=$(node -p -e "require('./package.json').version")
+          if [[ $current_version == "$published_version" ]]; then
+             echo "Version $current_version is already published"
+             exit 0
+          fi
+          npm publish          
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
