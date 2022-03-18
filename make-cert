@@ -10,6 +10,7 @@ if [[ -z "$DATA_PATH" ]]; then
     exit 1;
 fi
 
+export CERT_PREFIX=$(date +%Y)
 export START_DATE=$(TZ=UTC date +"%y%m%d000000Z")
 export SERIAL_PATH="$DATA_PATH/serial"
 export DATABASE_PATH="$DATA_PATH/database"
@@ -27,11 +28,12 @@ create_openssl_config() {
         -e s,\$ENV::START_DATE,"$START_DATE",g \
         -e s,\$ENV::SUBJECT_ALT_NAME,"$SUBJECT_ALT_NAME",g \
         "$source" > "$target"
-        
 }
 
 init() {
-    mkdir -p "$DATA_PATH" "$(dirname "$CERT_PATH")" "$(dirname "$KEY_PATH")"
+    mkdir -p "$DATA_PATH"
+    mkdir -p "$(dirname "$CERT_PREFIX")/$CERT_PREFIX"
+    mkdir -p "$(dirname "$KEY_PATH")/$CERT_PREFIX"
 
     if [[ ! -f "$SERIAL_PATH" ]]; then
         echo "0001" > "$SERIAL_PATH"
@@ -78,7 +80,9 @@ make_cert() {
     local ca="$1"
     local domain="$2"
 
-    local key_path="$(printf "$KEY_PATH" "$domain")" req_path="${domain}.csr" cert_path="$(printf "$CERT_PATH" "$domain")"
+    local key_path="$(printf "$KEY_PATH" "$CERT_PREFIX/$domain")"
+    local req_path="${domain}.csr"
+    local cert_path="$(printf "$CERT_PATH" "$CERT_PREFIX/$domain")"
 
     if [[ -f "$key_path" ]] && [[ -f "$cert_path" ]]; then
         return;
@@ -115,8 +119,8 @@ main() {
 
     init
 
-    export CA_KEY="$(printf "$KEY_PATH" "$ca")"
-    export CA_CERT="$(printf "$CERT_PATH" "$ca")"
+    export CA_KEY="$(printf "$KEY_PATH" "$CERT_PREFIX/$ca")"
+    export CA_CERT="$(printf "$CERT_PATH" "$CERT_PREFIX/$ca")"
     export SUBJECT_ALT_NAME="DNS:$ca"
 
     make_ca "$ca" "$CA_CERT" "$CA_KEY"

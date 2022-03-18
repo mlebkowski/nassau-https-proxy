@@ -30,11 +30,11 @@ const environment = {
 }
 
 function generateKeyPath(domain) {
-    return format(environment.KEY_PATH, domain);
+    return format(environment.KEY_PATH, (new Date).getFullYear() + '/' + domain);
 }
 
 function generateCertPath(domain) {
-    return format(environment.CERT_PATH, domain);
+    return format(environment.CERT_PATH, (new Date).getFullYear() + '/' + domain);
 }
 
 function generateCertificate(name) {
